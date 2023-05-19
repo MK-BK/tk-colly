@@ -1,0 +1,7 @@
+{
+    "dbHost": "127.0.0.1:6666",
+    "dbName": "root",
+    "dbPassword": "123456",
+    "dbTable": "movies",
+    "listenPort": "10086"
+}
