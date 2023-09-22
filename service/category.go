@@ -21,6 +21,6 @@ func (*CategoryManager) List(ctx context.Context) ([]*models.Category, error) {
 	return categories, nil
 }
 
-func (*CategoryManager) Save(ctx context.Context, categories ...*models.Category) error {
-	return common.DB.Save(categories).Error
+func (*CategoryManager) Create(ctx context.Context, categories ...*models.Category) error {
+	return common.DB.Create(categories).Error
 }

@@ -7,30 +7,33 @@ import (
 	"strconv"
 
 	"github.com/MK-BK/tk-colly/models"
-
 	"github.com/gin-gonic/gin"
 )
 
-func listCategory(c *gin.Context) {
-	categories, err := GE.CategoryManager.List(context.Background())
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
-		return
-	}
-	c.JSON(http.StatusOK, categories)
-}
-
 func listMovie(c *gin.Context) {
-	var options models.MovieListOption
+	options := &models.MovieListOption{
+		Offset: 0,
+		Limit:  20,
+	}
 
-	options.Offset, _ = strconv.Atoi(c.Query("offset"))
-	options.Limit, _ = strconv.Atoi(c.Query("limit"))
+	if offset := c.Query("offset"); offset != "" {
+		options.Offset, _ = strconv.Atoi(offset)
+	}
 
-	movies, err := GE.MoviesManager.List(context.Background(), &options)
+	if limit := c.Query("limit"); limit != "" {
+		options.Offset, _ = strconv.Atoi(limit)
+	}
+
+	if category := c.Query("category"); category != "" {
+		options.Categoty = category
+	}
+
+	movies, err := GE.MoviesManager.List(context.Background(), options)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return
 	}
+
 	c.JSON(http.StatusOK, movies)
 }
 
@@ -48,4 +51,20 @@ func getMovie(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, movieView)
+}
+
+func getMoviePlayer(c *gin.Context) {
+	id, ok := c.Params.Get("id")
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusBadRequest, errors.New("Params id empty"))
+		return
+	}
+
+	player, err := GE.MoviesManager.GetPlayer(context.Background(), id)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, player)
 }

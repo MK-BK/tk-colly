@@ -1,8 +1,8 @@
 package models
 
 type Environment struct {
-	MoviesManager
 	CategoryManager
+	MoviesManager
 }
 
 var GlobalEnvironment Environment

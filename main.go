@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"log"
 	"os"
 	"time"
 
@@ -14,15 +14,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
+const TimeFormat = "2006-01-02 15:04:05"
+
 var env = &models.GlobalEnvironment
+
 var configuration *common.Configuration
 
-var log = logrus.New()
+var collector *colly.Collector
+
+var tLog = logrus.New()
 
 func main() {
 	initConfig()
@@ -31,21 +36,18 @@ func main() {
 
 	initDB()
 
-	// func() {
-	// 	if err := readLockFile(); err != nil {
-	// 		fmt.Println(err)
-	// 	}
-
-	// 	if err := colly.Colly(); err != nil {
-	// 		panic(fmt.Sprintf("Colly init err: %+v", err))
-	// 	} else {
-	// 		log.Infof("Database init Finished")
-	// 	}
-
-	// 	writeLockFile()
-	// }()
+	go initCollector()
 
 	initRouter()
+}
+
+func initConfig() {
+	var err error
+
+	configuration, err = common.LoadConfig("config.json")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func initEnvironment() {
@@ -53,18 +55,16 @@ func initEnvironment() {
 	env.CategoryManager = service.NewCategoryManager()
 }
 
-func initConfig() {
-	var err error
-	configuration, err = common.LoadConfig("config.json")
-	if err != nil {
-		panic(err)
-	}
-}
-
 func initDB() {
 	dsn := fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8&parseTime=True&loc=Local", configuration.DBName, configuration.DBPassword, configuration.DBHost, configuration.DBTable)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		DisableAutomaticPing: false,
+		Logger: logger.New(log.New(os.Stderr, "\r\n", log.LstdFlags), logger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  logger.Warn,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  true,
+		}),
 	})
 	if err != nil {
 		panic(err)
@@ -72,23 +72,42 @@ func initDB() {
 
 	common.SetDatabase(db)
 
-	db.Table("movies").Set("gorm:table_options", "CHARSET=utf8mb4").AutoMigrate(&models.Movie{})
-	db.Table("movie_views").Set("gorm:table_options", "CHARSET=utf8mb4").AutoMigrate(&models.MovieView{})
 	db.Table("category").Set("gorm:table_options", "CHARSET=utf8mb4").AutoMigrate(&models.Category{})
+	db.Table("movie_players").Set("gorm:table_options", "CHARSET=utf8mb4").AutoMigrate(&models.MoviePlayer{})
+	db.Table("movie_views").Set("gorm:table_options", "CHARSET=utf8mb4").AutoMigrate(&models.MovieView{})
+}
+
+func initCollector() {
+	start := time.Now()
+
+	collector = colly.NewCollector(nil)
+
+	if err := readLockFile(); err != nil {
+		tLog.Warn(err)
+	}
+
+	if err := collector.Colly(); err != nil {
+		tLog.Errorf("Colly init err: %+v", err)
+		return
+	}
+
+	tLog.Infof("Database init Finished, speed: %+v", time.Now().Sub(start))
+
+	writeLockFile()
 }
 
 func readLockFile() error {
-	latest, err := ioutil.ReadFile("./latest.lock")
+	latest, err := os.ReadFile("./latest.lock")
 	if err != nil {
 		return err
 	}
 
-	t, err := time.Parse(models.TimeFormat, string(latest))
+	t, err := time.Parse(TimeFormat, string(latest))
 	if err != nil {
 		return err
 	}
 
-	colly.SetLatestUpdate(t)
+	collector.SetLatestUpdate(t)
 	return nil
 }
 
@@ -99,7 +118,7 @@ func writeLockFile() {
 	}
 	defer f.Close()
 
-	f.Write([]byte(time.Now().Format(models.TimeFormat)))
+	f.Write([]byte(time.Now().Format(TimeFormat)))
 }
 
 func initRouter() error {

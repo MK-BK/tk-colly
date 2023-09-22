@@ -1,0 +1,1 @@
+docker run -itd --name=TK.mysql -e MYSQL_ROOT_PASSWORD=123456  -e MYSQL_DATABASE=TK_COLLY -p 6666:3306  mysql:5.7.19

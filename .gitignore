@@ -1,1 +1,2 @@
-server/vendor
+vendor
+latest.lock

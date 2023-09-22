@@ -17,6 +17,8 @@ type Route struct {
 
 var Routers = []Route{
 	{Method: http.MethodGet, Path: "/category", Handler: listCategory},
+	{Method: http.MethodPost, Path: "/category", Handler: createCategory},
 	{Method: http.MethodGet, Path: "/movies", Handler: listMovie},
 	{Method: http.MethodGet, Path: "/movies/:id", Handler: getMovie},
+	{Method: http.MethodGet, Path: "/movies_players/:id", Handler: getMoviePlayer},
 }

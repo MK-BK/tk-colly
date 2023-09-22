@@ -2,17 +2,20 @@ package colly
 
 import (
 	"time"
+
+	"github.com/robfig/cron"
 )
 
 func Schedule(duration time.Duration) {
-	ticker := time.NewTicker(duration)
+	c := cron.New()
 
-	for {
-		select {
-		case <-ticker.C:
-			if err := Colly(); err != nil {
-				log.Error(err)
-			}
+	c.AddFunc("0 0 12 * * ?", func() {
+		now := time.Now()
+		collector := NewCollector(&now)
+
+		if err := collector.Colly(); err != nil {
+			collector.Logger.Error(err)
 		}
-	}
+	})
+	c.Start()
 }
